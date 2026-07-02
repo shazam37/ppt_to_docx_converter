@@ -21,7 +21,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install python-pptx python-docx customtkinter pyinstaller
+        pip install python-pptx python-docx customtkinter matplotlib numpy pyinstaller
 
     - name: Build Windows Executable
       run: |
@@ -47,7 +47,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install python-pptx python-docx customtkinter pyinstaller
+        pip install python-pptx python-docx customtkinter matplotlib numpy pyinstaller
 
     - name: Build Linux Executable
       run: |
@@ -73,7 +73,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install python-pptx python-docx customtkinter pyinstaller
+        pip install python-pptx python-docx customtkinter matplotlib numpy pyinstaller
 
     - name: Build macOS Executable
       run: |
