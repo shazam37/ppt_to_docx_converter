@@ -197,27 +197,49 @@ class PPTToDocConverterDitto:
 
                 doc_run = p.add_run(run.text)
 
-                # Font name
+                # Font name - handle THEME/INHERIT
                 if run.font.name:
                     doc_run.font.name = run.font.name
+                else:
+                    # If no explicit font, use a reasonable default
+                    # Titles/placeholders often use theme fonts
+                    doc_run.font.name = 'Calibri'  # Common theme default
 
-                # Font size - preserve EXACT size
+                # Font size - preserve EXACT size or use reasonable default
                 if run.font.size:
                     doc_run.font.size = run.font.size
+                else:
+                    # THEME/INHERIT size - use reasonable default
+                    # Placeholders/titles typically 14-18pt
+                    doc_run.font.size = Pt(14)
 
-                # Bold/Italic/Underline
-                if run.font.bold is not None:
-                    doc_run.font.bold = run.font.bold
-                if run.font.italic is not None:
-                    doc_run.font.italic = run.font.italic
-                if run.font.underline is not None:
-                    doc_run.font.underline = run.font.underline
+                # Bold/Italic/Underline - handle None (inherit) vs False (explicitly not)
+                if run.font.bold is True:
+                    doc_run.font.bold = True
+                elif run.font.bold is False:
+                    doc_run.font.bold = False
+                # If None, leave as default
 
-                # Color
-                if run.font.color and run.font.color.type == 1:
+                if run.font.italic is True:
+                    doc_run.font.italic = True
+                elif run.font.italic is False:
+                    doc_run.font.italic = False
+
+                if run.font.underline is True:
+                    doc_run.font.underline = True
+                elif run.font.underline is False:
+                    doc_run.font.underline = False
+
+                # Color - handle RGB colors (including white!)
+                if run.font.color and run.font.color.type == 1:  # RGB color type
                     rgb = run.font.color.rgb
                     if rgb:
+                        # Set color even if it's white (255,255,255)
                         doc_run.font.color.rgb = RGBColor(rgb[0], rgb[1], rgb[2])
+                # If color is THEME/INHERIT (type=None), use default black
+                elif not run.font.color or run.font.color.type != 1:
+                    # Use default black for theme colors
+                    doc_run.font.color.rgb = RGBColor(0, 0, 0)
 
             # Space after paragraph
             p.paragraph_format.space_after = Pt(6)
