@@ -168,9 +168,65 @@ class PPTToDocConverterDitto:
                 continue
 
     def _add_text_shape_ditto(self, cell, shape):
-        """Add text with exact formatting"""
+        """Add text with exact formatting including background fills"""
         text_frame = shape.text_frame
 
+        # Check if shape has a background fill (colored box)
+        has_background_fill = False
+        background_rgb = None
+        try:
+            if hasattr(shape, 'fill') and shape.fill.type == 1:  # Solid fill
+                background_rgb = shape.fill.fore_color.rgb
+                has_background_fill = True
+        except:
+            pass
+
+        # If shape has background fill, use a single-cell table for the colored box
+        if has_background_fill and background_rgb:
+            # Create a single-cell table for the colored box
+            box_table = cell.add_table(rows=1, cols=1)
+            box_table.autofit = False
+            box_table.allow_autofit = False
+
+            box_cell = box_table.rows[0].cells[0]
+
+            # Set cell background color
+            hex_color = f'{background_rgb[0]:02x}{background_rgb[1]:02x}{background_rgb[2]:02x}'
+            shading_elm = OxmlElement('w:shd')
+            shading_elm.set(qn('w:fill'), hex_color)
+            box_cell._element.get_or_add_tcPr().append(shading_elm)
+
+            # Remove cell borders for clean look
+            self._remove_cell_borders(box_cell)
+
+            # Add text inside the colored box
+            for paragraph in text_frame.paragraphs:
+                if not paragraph.text.strip():
+                    continue
+
+                p = box_cell.add_paragraph()
+
+                # Copy alignment
+                try:
+                    if paragraph.alignment == PP_PARAGRAPH_ALIGNMENT.CENTER:
+                        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    elif paragraph.alignment == PP_PARAGRAPH_ALIGNMENT.RIGHT:
+                        p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+                    elif paragraph.alignment == PP_PARAGRAPH_ALIGNMENT.JUSTIFY:
+                        p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+                    else:
+                        p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                except:
+                    pass
+
+                # Add runs with formatting
+                self._add_runs_to_paragraph(p, paragraph)
+
+            # Add spacing after the colored box
+            cell.add_paragraph()
+            return
+
+        # Regular text without background fill
         for paragraph in text_frame.paragraphs:
             if not paragraph.text.strip():
                 continue
@@ -190,59 +246,63 @@ class PPTToDocConverterDitto:
             except:
                 pass
 
-            # Copy runs with exact formatting
-            for run in paragraph.runs:
-                if not run.text:
-                    continue
-
-                doc_run = p.add_run(run.text)
-
-                # Font name - handle THEME/INHERIT
-                if run.font.name:
-                    doc_run.font.name = run.font.name
-                else:
-                    # If no explicit font, use a reasonable default
-                    # Titles/placeholders often use theme fonts
-                    doc_run.font.name = 'Calibri'  # Common theme default
-
-                # Font size - preserve EXACT size or use reasonable default
-                if run.font.size:
-                    doc_run.font.size = run.font.size
-                else:
-                    # THEME/INHERIT size - use reasonable default
-                    # Placeholders/titles typically 14-18pt
-                    doc_run.font.size = Pt(14)
-
-                # Bold/Italic/Underline - handle None (inherit) vs False (explicitly not)
-                if run.font.bold is True:
-                    doc_run.font.bold = True
-                elif run.font.bold is False:
-                    doc_run.font.bold = False
-                # If None, leave as default
-
-                if run.font.italic is True:
-                    doc_run.font.italic = True
-                elif run.font.italic is False:
-                    doc_run.font.italic = False
-
-                if run.font.underline is True:
-                    doc_run.font.underline = True
-                elif run.font.underline is False:
-                    doc_run.font.underline = False
-
-                # Color - handle RGB colors (including white!)
-                if run.font.color and run.font.color.type == 1:  # RGB color type
-                    rgb = run.font.color.rgb
-                    if rgb:
-                        # Set color even if it's white (255,255,255)
-                        doc_run.font.color.rgb = RGBColor(rgb[0], rgb[1], rgb[2])
-                # If color is THEME/INHERIT (type=None), use default black
-                elif not run.font.color or run.font.color.type != 1:
-                    # Use default black for theme colors
-                    doc_run.font.color.rgb = RGBColor(0, 0, 0)
+            # Add runs with formatting
+            self._add_runs_to_paragraph(p, paragraph)
 
             # Space after paragraph
             p.paragraph_format.space_after = Pt(6)
+
+    def _add_runs_to_paragraph(self, p, paragraph):
+        """Add runs from PPT paragraph to Word paragraph with exact formatting"""
+        for run in paragraph.runs:
+            if not run.text:
+                continue
+
+            doc_run = p.add_run(run.text)
+
+            # Font name - handle THEME/INHERIT
+            if run.font.name:
+                doc_run.font.name = run.font.name
+            else:
+                # If no explicit font, use a reasonable default
+                # Titles/placeholders often use theme fonts
+                doc_run.font.name = 'Calibri'  # Common theme default
+
+            # Font size - preserve EXACT size or use reasonable default
+            if run.font.size:
+                doc_run.font.size = run.font.size
+            else:
+                # THEME/INHERIT size - use reasonable default
+                # Placeholders/titles typically 14-18pt
+                doc_run.font.size = Pt(14)
+
+            # Bold/Italic/Underline - handle None (inherit) vs False (explicitly not)
+            if run.font.bold is True:
+                doc_run.font.bold = True
+            elif run.font.bold is False:
+                doc_run.font.bold = False
+            # If None, leave as default
+
+            if run.font.italic is True:
+                doc_run.font.italic = True
+            elif run.font.italic is False:
+                doc_run.font.italic = False
+
+            if run.font.underline is True:
+                doc_run.font.underline = True
+            elif run.font.underline is False:
+                doc_run.font.underline = False
+
+            # Color - handle RGB colors (including white!)
+            if run.font.color and run.font.color.type == 1:  # RGB color type
+                rgb = run.font.color.rgb
+                if rgb:
+                    # Set color even if it's white (255,255,255)
+                    doc_run.font.color.rgb = RGBColor(rgb[0], rgb[1], rgb[2])
+            # If color is THEME/INHERIT (type=None), use default black
+            elif not run.font.color or run.font.color.type != 1:
+                # Use default black for theme colors
+                doc_run.font.color.rgb = RGBColor(0, 0, 0)
 
     def _add_table_ditto(self, cell, shape):
         """Add table with exact formatting"""
