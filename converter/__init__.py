@@ -1,8 +1,9 @@
-from .core_visual import PPTToDocConverterVisual, ConversionError
+from .core_ditto import PPTToDocConverterDitto, ConversionError
+from .core_visual import PPTToDocConverterVisual
 from .core_clean import PPTToDocConverterClean
 from .core_enhanced import PPTToDocConverterEnhanced
 
-# Use visual converter as default (charts as images, not tables!)
-PPTToDocConverter = PPTToDocConverterVisual
+# Use ditto converter as default (maximum visual fidelity - exact fonts, colors, alignment)
+PPTToDocConverter = PPTToDocConverterDitto
 
-__all__ = ['PPTToDocConverter', 'PPTToDocConverterVisual', 'PPTToDocConverterClean', 'PPTToDocConverterEnhanced', 'ConversionError']
+__all__ = ['PPTToDocConverter', 'PPTToDocConverterDitto', 'PPTToDocConverterVisual', 'PPTToDocConverterClean', 'PPTToDocConverterEnhanced', 'ConversionError']
